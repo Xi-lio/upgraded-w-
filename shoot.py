@@ -13,6 +13,8 @@ targets = [
     ("index.html", "01_main_pendulum.png", (940, 900)),
     ("bonus_a_double_pendulum/index.html", "02_bonus_a_double_pendulum.png", (940, 880)),
     ("bonus_b_celestial_persistence/index.html", "03_bonus_b_celestial.png", (940, 880)),
+    ("starter_code/03_buggy_practice/index.html", "04_task04_buggy_before.png", (940, 880)),
+    ("task04_repair/index.html", "05_task04_repair_after.png", (940, 880)),
 ]
 
 for rel, outname, (w, h) in targets:

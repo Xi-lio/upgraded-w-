@@ -29,7 +29,9 @@
 | `bonus_a_double_pendulum/index.html` | 进阶挑战 A：双摆混沌模拟器（RK4 + 彩虹拖尾 + 鼠标拖拽） |
 | `bonus_b_celestial_persistence/index.html` | 进阶挑战 B：天体场景切换 + localStorage 持久化 |
 | `starter_code/03_buggy_practice/index.html` | 任务四**故障演练页**（故意注入未定义报错） |
-| `starter_code/04_fixed_solution/index.html` | 任务四**修复后对照版** |
+| `starter_code/04_fixed_solution/index.html` | 任务四**修复后对照版**（课程提供） |
+| `task04_repair/index.html` | 任务四**自愈修复产物**（对演练页执行 ReAct 闭环后的可用版本） |
+| `repair_task04.py` | 一键跑完「观察→思考→行动→再观察」四步闭环的脚本 |
 | `verify_bug.js` | 自动化验证脚本：证明故障页报错 / 修复页不报错 |
 | `verify_rk4.js` | 自动化验证脚本：证明双摆 RK4 积分 60 秒不发散 |
 | `verify_syntax.js` | 批量校验所有 HTML 内嵌 JS 语法 |
@@ -40,7 +42,7 @@
 
 ---
 
-## 三、迭代轨迹（Git 里程碑，共 6 次 Commit）
+## 三、迭代轨迹（Git 里程碑，共 10 次 Commit）
 
 | # | Commit | Hash | 对应任务 | 产物状态 |
 | :-: | :--- | :--- | :--- | :--- |
@@ -50,8 +52,17 @@
 | 4 | `fix: resolve reset button runtime error` | `483010c` | 任务四 | 根因修复 + 验证脚本，控制台 0 报错 |
 | 5 | `feat: bonus A double pendulum chaos` | `cd2fe4a` | 任务五 | 双摆 RK4 + 彩虹拖尾 + 拖拽 |
 | 6 | `feat: bonus B celestial scenes persistence` | `4024ac5` | 任务五 | 天体场景切换 + 本地持久化 |
+| 7 | `docs: add evidence-based verification suite and screenshots` | `71ef19e` | 验收 | 5 个验证脚本 + 5 张真实截图 |
+| 8 | `chore: add packaging script for submission` | `78ddc9f` | 交付 | 一键打包脚本 |
+| 9 | `fix(task04): self-heal downloaded buggy page via ReAct loop` | `18227f9` | 任务四 | 对演练页执行完整 ReAct 闭环修复 |
+| 10 | `chore: untrack browser temp profiles committed by mistake` | `0386428` | 维护 | 清理误入库的浏览器临时文件 |
 
 查看完整历史：`git log --oneline --stat`
+
+> **第 10 次 Commit 的由来（一个真实的小事故）**：第 9 次提交时，验证脚本在 `task04_repair/_tmp/`
+> 下生成了 Edge 浏览器 profile 目录（400+ 个缓存文件），我只在 `.gitignore` 里排除了 `screenshots/`
+> 下的同类目录，漏了这一处，结果被一并提交。发现后用 `git rm -r --cached` 将其移出索引并补齐
+> `.gitignore` 规则。**教训：`.gitignore` 要按「目录」而非「调用点」来写，否则新增脚本会重新踩坑。**
 
 ---
 
@@ -144,6 +155,44 @@ PASS  bonus_b_celestial_persistence/index.html
 | `01_main_pendulum.png` | 主交付物：深灰背景、发光摆球、三滑块面板、重置按钮 |
 | `02_bonus_a_double_pendulum.png` | 双摆：两节摆杆 + 实时 θ/ω 状态读数 + 拖尾开关 |
 | `03_bonus_b_celestial.png` | 天体场景：地球/月球/木星/太空胶囊按钮 + 场景读数 |
+| `04_task04_buggy_before.png` | 故障演练页（修复前） |
+| `05_task04_repair_after.png` | 自愈修复后（可正常运行） |
+
+### 证据 7 · 任务四完整 ReAct 闭环（一键复现）
+
+运行 `python repair_task04.py`，脚本会对演练页自动完成四步闭环并打印全过程：
+
+```
+① 观察 (Observe)
+  自动点击重置按钮      : 已执行
+  捕获报错条数          : 1
+  报错内容              : Uncaught ReferenceError: resetAnimation is not defined @ line 193:74
+  点击前摆角            : 0.7779516416952079 rad
+  点击后摆角            : 0.7779516416952079 rad
+  结论                  : 故障确已复现（报错且复位失效）
+
+② 思考 (Think)
+  调用点 (HTML onclick) : resetAnimation()  —— 全局作用域查找
+  源码中已定义的函数    : resetSimulationState, updatePhysics, draw, animate
+  是否存在同名定义      : 否  ← 这就是根因
+
+③ 行动 (Act)
+  diff:
+    line 214
+      - function resetSimulationState() {
+      + function resetAnimation() {
+
+④ 再观察 (Verify)
+  捕获报错条数          : 0
+  报错内容              : (无)
+  点击前摆角            : 0.7802321119647775 rad
+  点击后摆角            : 0.7853981633974483 rad
+  复位功能              : 已恢复（精准回到 π/4 = 45°）
+
+最终判定：PASS —— 控制台 0 报错且重置功能恢复，自愈闭环完成 ✅
+```
+
+**关键点**：修复前后「点击前摆角」都≈0.78 rad，唯一变量是复位是否生效——证明这不是随机现象，而是**修复前后的一组受控对照**。
 
 ---
 

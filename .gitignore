@@ -22,3 +22,7 @@ npm-debug.log*
 # ---- 验证脚本产生的浏览器临时目录 ----
 screenshots/_edgeprofile_*/
 screenshots/_probe/
+task04_repair/_tmp/
+**/_edgeprofile_*/
+**/_probe/
+**/_tmp/
