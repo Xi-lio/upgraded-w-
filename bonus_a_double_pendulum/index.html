@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>进阶挑战 A · 双摆混沌模拟器 (RK4)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #1a1a24;
+      color: #e0e6ed;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    header { margin-bottom: 12px; text-align: center; }
+
+    h1 { font-size: 1.35rem; font-weight: 600; color: #f0f4f8; }
+
+    .subtitle {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 0.74rem;
+      padding: 3px 10px;
+      border-radius: 10px;
+      background: rgba(186, 104, 255, 0.14);
+      color: #ba68ff;
+      border: 1px solid rgba(186, 104, 255, 0.35);
+    }
+
+    canvas { display: block; border-radius: 12px; background: radial-gradient(circle at center, #222232 0%, #15151e 100%); box-shadow: 0 8px 32px rgba(0,0,0,.6); cursor: grab; }
+    canvas.dragging { cursor: grabbing; }
+
+    .control-panel {
+      display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: center;
+      gap: 20px; padding: 13px 24px; margin-top: 14px;
+      background: rgba(30, 30, 42, 0.75);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.35);
+      max-width: 860px; width: 100%;
+    }
+
+    .control-group { display: flex; flex-direction: column; gap: 5px; font-size: 0.8rem; }
+    .control-label { display: flex; justify-content: space-between; gap: 12px; color: #90caf9; font-weight: 500; }
+    .val-display { color: #fff; font-family: "SFMono-Regular", Consolas, monospace; font-weight: 600; }
+
+    input[type="range"] {
+      -webkit-appearance: none; appearance: none;
+      width: 130px; height: 6px; border-radius: 3px; background: #33334d; outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 15px; height: 15px; border-radius: 50%;
+      background: #ba68ff; cursor: pointer; box-shadow: 0 0 8px #ba68ff;
+    }
+
+    .btn {
+      border: none; padding: 8px 16px; font-size: 0.82rem; font-weight: 600;
+      border-radius: 8px; cursor: pointer; white-space: nowrap; transition: all .2s ease;
+    }
+    .btn-reset { background: linear-gradient(135deg, #ba68ff 0%, #7c4dff 100%); color: #fff; box-shadow: 0 2px 10px rgba(124,77,255,.45); }
+    .btn-reset:hover { background: linear-gradient(135deg, #cb8dff 0%, #9575ff 100%); transform: translateY(-1px); }
+    .btn-trail { background: rgba(255,255,255,.08); color: #b0bec5; border: 1px solid rgba(255,255,255,.15); }
+    .btn-trail.active { background: rgba(0,229,255,.18); color: #00e5ff; border-color: rgba(0,229,255,.45); }
+
+    .hint { font-size: 0.76rem; color: #7c8598; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>双摆混沌模拟器</h1>
+    <span class="subtitle">Runge-Kutta 4 阶积分 · 彩虹渐变拖尾 · 鼠标拖拽互动</span>
+  </header>
+
+  <canvas id="canvas" width="820" height="520"></canvas>
+
+  <div class="control-panel">
+    <div class="control-group">
+      <div class="control-label"><span>摆杆 1 长度</span><span id="l1Val" class="val-display">150</span></div>
+      <input type="range" id="l1Slider" min="60" max="240" value="150" step="1">
+    </div>
+    <div class="control-group">
+      <div class="control-label"><span>摆杆 2 长度</span><span id="l2Val" class="val-display">130</span></div>
+      <input type="range" id="l2Slider" min="60" max="240" value="130" step="1">
+    </div>
+    <div class="control-group">
+      <div class="control-label"><span>重力 g</span><span id="gVal" class="val-display">9.8</span></div>
+      <input type="range" id="gSlider" min="1" max="25" value="9.8" step="0.1">
+    </div>
+    <button id="resetBtn" class="btn btn-reset" type="button">重置双摆</button>
+    <button id="trailBtn" class="btn btn-trail active" type="button">拖尾 开</button>
+  </div>
+
+  <div class="hint">用鼠标直接拖拽任意摆球调整角度，松手即释放 · 微小初值差异会演化出完全不同的轨迹</div>
+
+  <script>
+    // ============================================================
+    //  双摆混沌模拟器 —— RK4 数值积分 + 半透明彩虹拖尾 + 鼠标拖拽
+    //  纯原生 Canvas，零外部依赖
+    // ============================================================
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // ---------- 参数 ----------
+    const P = {
+      L1: 150,        // 上摆杆长度（像素）
+      L2: 130,        // 下摆杆长度（像素）
+      m1: 1.0,        // 上摆球质量
+      m2: 1.0,        // 下摆球质量
+      g: 9.8,         // 重力加速度
+      damping: 0.0    // 阻尼（混沌系统默认不加阻尼，保证守恒特性）
+    };
+
+    const origin = { x: canvas.width / 2, y: canvas.height / 2 - 60 };
+
+    // 状态向量 [θ1, ω1, θ2, ω2]
+    const TH1 = 0, W1 = 1, TH2 = 2, W2 = 3;
+
+    function initialState() {
+      return [Math.PI / 2 + 0.6, 0, Math.PI / 2 + 0.9, 0];  // 两个不同的初始角
+    }
+    let state = initialState();
+
+    // 拖尾缓存：保存下摆球的历史位置
+    const trail = [];
+    const TRAIL_MAX = 140;
+    let trailEnabled = true;
+
+    const lastTime = { t: performance.now() };
+
+    // ============================================================
+    //  运动方程：由状态向量计算导数 d(state)/dt
+    //  θ1'' = [ -g(2m1+m2)sinθ1 - m2 g sin(θ1-2θ2)
+    //           - 2 sin(θ1-θ2) m2 (ω2² L2 + ω1² L1 cos(θ1-θ2)) ]
+    //         / [ L1 (2m1 + m2 - m2 cos(2θ1-2θ2)) ]
+    //  θ2'' = [ 2 sin(θ1-θ2) ( ω1² L1 (m1+m2) + g(m1+m2) cosθ1
+    //           + ω2² L2 m2 cos(θ1-θ2) ) ]
+    //         / [ L2 (2m1 + m2 - m2 cos(2θ1-2θ2)) ]
+    // ============================================================
+    function derivatives(s) {
+      const t1 = s[TH1], w1 = s[W1], t2 = s[TH2], w2 = s[W2];
+      const { L1, L2, m1, m2, g } = P;
+
+      const delta = t1 - t2;
+      const denom = 2 * m1 + m2 - m2 * Math.cos(2 * delta);
+
+      const a1 =
+        (-g * (2 * m1 + m2) * Math.sin(t1) -
+          m2 * g * Math.sin(t1 - 2 * t2) -
+          2 * Math.sin(delta) * m2 * (w2 * w2 * L2 + w1 * w1 * L1 * Math.cos(delta))) /
+        (L1 * denom);
+
+      const a2 =
+        (2 * Math.sin(delta) *
+          (w1 * w1 * L1 * (m1 + m2) +
+            g * (m1 + m2) * Math.cos(t1) +
+            w2 * w2 * L2 * m2 * Math.cos(delta))) /
+        (L2 * denom);
+
+      return [w1, a1, w2, a2];
+    }
+
+    // ============================================================
+    //  Runge-Kutta 4 阶数值积分：单步推进 dt
+    // ============================================================
+    function rk4Step(s, dt) {
+      const add = (a, b, k) => a.map((v, i) => v + b[i] * k);
+
+      const k1 = derivatives(s);
+      const k2 = derivatives(add(s, k1, dt / 2));
+      const k3 = derivatives(add(s, k2, dt / 2));
+      const k4 = derivatives(add(s, k3, dt));
+
+      return s.map((v, i) =>
+        v + (dt / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i])
+      );
+    }
+
+    // ---------- 由角度求两个摆球的笛卡尔坐标 ----------
+    function jointPositions(s) {
+      const t1 = s[TH1], t2 = s[TH2];
+      const x1 = origin.x + P.L1 * Math.sin(t1);
+      const y1 = origin.y + P.L1 * Math.cos(t1);
+      const x2 = x1 + P.L2 * Math.sin(t2);
+      const y2 = y1 + P.L2 * Math.cos(t2);
+      return [{ x: x1, y: y1 }, { x: x2, y: y2 }];
+    }
+
+    // ============================================================
+    //  渲染
+    // ============================================================
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const pts = jointPositions(state);
+      const bob1 = pts[0], bob2 = pts[1];
+
+      // ---------- 彩虹渐变拖尾 ----------
+      if (trailEnabled && trail.length > 1) {
+        for (let i = 1; i < trail.length; i++) {
+          const p0 = trail[i - 1];
+          const p1 = trail[i];
+          const progress = i / trail.length;          // 0 = 最旧，1 = 最新
+          const hue = 200 + progress * 140;           // 青 → 紫 → 粉，形成彩虹推移
+          const alpha = progress * 0.55;
+          ctx.beginPath();
+          ctx.moveTo(p0.x, p0.y);
+          ctx.lineTo(p1.x, p1.y);
+          ctx.strokeStyle = 'hsla(' + hue + ', 100%, 62%, ' + alpha + ')';
+          ctx.lineWidth = 1 + progress * 2.6;
+          ctx.lineCap = 'round';
+          ctx.shadowColor = 'hsla(' + hue + ', 100%, 60%, ' + alpha + ')';
+          ctx.shadowBlur = 6 * progress;
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+      }
+
+      // ---------- 上摆杆 ----------
+      ctx.beginPath();
+      ctx.moveTo(origin.x, origin.y);
+      ctx.lineTo(bob1.x, bob1.y);
+      ctx.strokeStyle = 'rgba(144, 202, 249, 0.75)';
+      ctx.lineWidth = 2.4;
+      ctx.shadowBlur = 0;
+      ctx.stroke();
+
+      // ---------- 下摆杆 ----------
+      ctx.beginPath();
+      ctx.moveTo(bob1.x, bob1.y);
+      ctx.lineTo(bob2.x, bob2.y);
+      ctx.strokeStyle = 'rgba(186, 104, 255, 0.8)';
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+
+      // ---------- 悬点 ----------
+      ctx.beginPath();
+      ctx.arc(origin.x, origin.y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#90caf9';
+      ctx.shadowColor = '#42a5f5';
+      ctx.shadowBlur = 10;
+      ctx.fill();
+
+      // ---------- 摆球 1 ----------
+      ctx.beginPath();
+      ctx.arc(bob1.x, bob1.y, 13, 0, Math.PI * 2);
+      ctx.fillStyle = '#42a5f5';
+      ctx.shadowColor = '#42a5f5';
+      ctx.shadowBlur = 16;
+      ctx.fill();
+
+      // ---------- 摆球 2（外发光光晕） ----------
+      const halo = ctx.createRadialGradient(bob2.x, bob2.y, 3, bob2.x, bob2.y, 44);
+      halo.addColorStop(0, 'rgba(186, 104, 255, 0.4)');
+      halo.addColorStop(0.5, 'rgba(186, 104, 255, 0.1)');
+      halo.addColorStop(1, 'rgba(186, 104, 255, 0)');
+      ctx.beginPath();
+      ctx.arc(bob2.x, bob2.y, 44, 0, Math.PI * 2);
+      ctx.fillStyle = halo;
+      ctx.shadowBlur = 0;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(bob2.x, bob2.y, 15, 0, Math.PI * 2);
+      ctx.fillStyle = '#ba68ff';
+      ctx.shadowColor = '#ba68ff';
+      ctx.shadowBlur = 18;
+      ctx.fill();
+
+      // ---------- 高光 ----------
+      ctx.beginPath();
+      ctx.arc(bob2.x - 4, bob2.y - 4, 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,.85)';
+      ctx.shadowBlur = 0;
+      ctx.fill();
+
+      // ---------- 状态读数 ----------
+      ctx.fillStyle = 'rgba(200, 210, 225, 0.55)';
+      ctx.font = '12px Consolas, monospace';
+      ctx.fillText('θ1 = ' + state[TH1].toFixed(3) + ' rad', 16, 24);
+      ctx.fillText('θ2 = ' + state[TH2].toFixed(3) + ' rad', 16, 42);
+      ctx.fillText('ω1 = ' + state[W1].toFixed(3) + ' rad/s', 16, 60);
+      ctx.fillText('ω2 = ' + state[W2].toFixed(3) + ' rad/s', 16, 78);
+    }
+
+    // ============================================================
+    //  主循环：固定子步长积分，保证混沌系统数值稳定
+    // ============================================================
+    function animate(now) {
+      let dt = (now - lastTime.t) / 1000;
+      lastTime.t = now;
+      dt = Math.min(dt, 0.05);          // 上限防止切后台回来数值发散
+
+      // 固定步长 1/600 s 拆分为多个子步，RK4 在小步长下精度最高
+      const SUB = 1 / 600;
+      let remaining = dt;
+      while (remaining > 0) {
+        const h = Math.min(SUB, remaining);
+        state = rk4Step(state, h);
+        remaining -= h;
+      }
+
+      // 记录拖尾
+      if (trailEnabled) {
+        const pts = jointPositions(state);
+        trail.push({ x: pts[1].x, y: pts[1].y });
+        if (trail.length > TRAIL_MAX) trail.shift();
+      }
+
+      draw();
+      requestAnimationFrame(animate);
+    }
+
+    // ============================================================
+    //  鼠标拖拽：拖动任一摆球改变初始角度，松手释放
+    // ============================================================
+    let dragging = null;   // 1 = 拖上摆球，2 = 拖下摆球
+
+    function getMouse(e) {
+      const r = canvas.getBoundingClientRect();
+      const sx = canvas.width / r.width;
+      const sy = canvas.height / r.height;
+      return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      const m = getMouse(e);
+      const pts = jointPositions(state);
+      const d1 = Math.hypot(m.x - pts[0].x, m.y - pts[0].y);
+      const d2 = Math.hypot(m.x - pts[1].x, m.y - pts[1].y);
+
+      if (d1 < 26) dragging = 1;
+      else if (d2 < 28) dragging = 2;
+
+      if (dragging) {
+        canvas.classList.add('dragging');
+        trail.length = 0;   // 拖动时清空旧轨迹，避免连线穿越
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const m = getMouse(e);
+
+      if (dragging === 1) {
+        // 上摆球：由悬点指向鼠标求 θ1
+        state[TH1] = Math.atan2(m.x - origin.x, m.y - origin.y);
+        state[W1] = 0;
+        state[W2] = 0;
+      } else {
+        // 下摆球：由已固定的上摆球位置指向鼠标求 θ2
+        const pts = jointPositions(state);
+        state[TH2] = Math.atan2(m.x - pts[0].x, m.y - pts[0].y);
+        state[W2] = 0;
+      }
+    });
+
+    function endDrag() {
+      if (!dragging) return;
+      dragging = null;
+      canvas.classList.remove('dragging');
+      lastTime.t = performance.now();   // 重置计时，避免松手瞬间大 dt
+    }
+
+    canvas.addEventListener('mouseup', endDrag);
+    canvas.addEventListener('mouseleave', endDrag);
+
+    // ============================================================
+    //  控件绑定
+    // ============================================================
+    const l1Slider = document.getElementById('l1Slider');
+    const l2Slider = document.getElementById('l2Slider');
+    const gSlider = document.getElementById('gSlider');
+    const l1Val = document.getElementById('l1Val');
+    const l2Val = document.getElementById('l2Val');
+    const gVal = document.getElementById('gVal');
+
+    l1Slider.addEventListener('input', (e) => {
+      P.L1 = parseFloat(e.target.value);
+      l1Val.textContent = P.L1;
+    });
+    l2Slider.addEventListener('input', (e) => {
+      P.L2 = parseFloat(e.target.value);
+      l2Val.textContent = P.L2;
+    });
+    gSlider.addEventListener('input', (e) => {
+      P.g = parseFloat(e.target.value);
+      gVal.textContent = P.g.toFixed(1);
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      state = initialState();
+      trail.length = 0;
+      lastTime.t = performance.now();
+    });
+
+    const trailBtn = document.getElementById('trailBtn');
+    trailBtn.addEventListener('click', () => {
+      trailEnabled = !trailEnabled;
+      trailBtn.textContent = '拖尾 ' + (trailEnabled ? '开' : '关');
+      trailBtn.classList.toggle('active', trailEnabled);
+      if (!trailEnabled) trail.length = 0;
+    });
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
