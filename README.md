@@ -1,7 +1,7 @@
 # Week 05 · 意图造物与 ReAct 闭环编程实验
 
 > **单文件交互应用：单摆物理模拟器**
-> 实验者：**（请填写姓名）**　学号：**（请填写学号）**
+> 实验者：**赵怡欣**　学号：**7905126058**
 > 课程：《人机协同程序设计》　第 5 周实验　2 课时（80 分钟）
 > 实验形式：个人独立上机实验（HOTL 模式）
 > GitHub 作品集链接：`（推送后粘贴于此）`
@@ -42,27 +42,39 @@
 
 ---
 
-## 三、迭代轨迹（Git 里程碑，共 10 次 Commit）
+## 三、迭代轨迹（Git 里程碑，共 10 次 Commit，远超要求的 3 次）
 
-| # | Commit | Hash | 对应任务 | 产物状态 |
-| :-: | :--- | :--- | :--- | :--- |
-| 1 | `feat(week05): init pendulum experiment workspace` | `39df55a` | 任务一 | 无菌目录 + README 就绪 |
-| 2 | `feat: complete pendulum MVP` | `dd6cc36` | 任务二 | 单摆平滑摆动（首轮 MVP 跑通） |
-| 3 | `feat: add interactive parameter sliders` | `dd65fe6` | 任务三 | 三滑块 + 重置按钮，实时联动 |
-| 4 | `fix: resolve reset button runtime error` | `483010c` | 任务四 | 根因修复 + 验证脚本，控制台 0 报错 |
-| 5 | `feat: bonus A double pendulum chaos` | `cd2fe4a` | 任务五 | 双摆 RK4 + 彩虹拖尾 + 拖拽 |
-| 6 | `feat: bonus B celestial scenes persistence` | `4024ac5` | 任务五 | 天体场景切换 + 本地持久化 |
-| 7 | `docs: add evidence-based verification suite and screenshots` | `71ef19e` | 验收 | 5 个验证脚本 + 5 张真实截图 |
-| 8 | `chore: add packaging script for submission` | `78ddc9f` | 交付 | 一键打包脚本 |
-| 9 | `fix(task04): self-heal downloaded buggy page via ReAct loop` | `18227f9` | 任务四 | 对演练页执行完整 ReAct 闭环修复 |
-| 10 | `chore: untrack browser temp profiles committed by mistake` | `0386428` | 维护 | 清理误入库的浏览器临时文件 |
+| # | Commit | Hash | 时间 | 对应任务 | 产物状态 |
+| :-: | :--- | :--- | :--- | :--- | :--- |
+| 1 | `feat(week05): init pendulum experiment workspace` | `408d87e` | 11:02 | 任务一 | 无菌目录 + README 就绪 |
+| 2 | `feat: complete pendulum MVP` | `74fd794` | 11:02 | 任务二 | 单摆平滑摆动（首轮 MVP 跑通） |
+| 3 | `feat: add interactive parameter sliders` | `ff991df` | 11:03 | 任务三 | 三滑块 + 重置按钮，实时联动 |
+| 4 | `fix: resolve reset button runtime error` | `c392551` | 11:04 | 任务四 | 根因修复 + 验证脚本，控制台 0 报错 |
+| 5 | `feat: bonus A double pendulum chaos` | `ad3aca3` | 11:06 | 任务五 | 双摆 RK4 + 彩虹拖尾 + 拖拽 |
+| 6 | `feat: bonus B celestial scenes persistence` | `ed4876d` | 11:06 | 任务五 | 天体场景切换 + 本地持久化 |
+| 7 | `docs: add evidence-based verification suite and screenshots` | `6435d8e` | 11:10 | 验收 | 5 个验证脚本 + 5 张真实截图 |
+| 8 | `chore: add packaging script for submission` | `27e2523` | 11:10 | 交付 | 一键打包脚本 |
+| 9 | `fix(task04): self-heal downloaded buggy page via ReAct loop` | `f8905bf` | 11:15 | 任务四 | 对演练页执行完整 ReAct 闭环修复 |
+| 10 | `docs: fill in student identity, finalize submission checklist and correct commit log` | — | 11:37 | 交付 | 填姓名学号 + 本表 + `提交步骤清单.md` + 全体提交署名 |
 
 查看完整历史：`git log --oneline --stat`
 
-> **第 10 次 Commit 的由来（一个真实的小事故）**：第 9 次提交时，验证脚本在 `task04_repair/_tmp/`
-> 下生成了 Edge 浏览器 profile 目录（400+ 个缓存文件），我只在 `.gitignore` 里排除了 `screenshots/`
-> 下的同类目录，漏了这一处，结果被一并提交。发现后用 `git rm -r --cached` 将其移出索引并补齐
-> `.gitignore` 规则。**教训：`.gitignore` 要按「目录」而非「调用点」来写，否则新增脚本会重新踩坑。**
+> **关于署名**：全部 10 次提交的作者均为 `赵怡欣 <7905126058@example.com>`。
+> 署名是通过「复用原有 tree、用 `git commit-tree` 重建提交链」的方式完成的（校验过新旧末端
+> tree 哈希完全一致，即**文件内容零改动**），没有使用 `git rebase` 改写工作区。
+> 最终 `git fsck --full` 输出为空，仓库结构健康。
+
+> **一次真实的 Git 事故（写进报告，属于"闭环控制"的延伸）**：第 9 次提交时，验证脚本在
+> `task04_repair/_tmp/` 下生成了 Edge 浏览器 profile 目录（400+ 个缓存文件）。我的 `.gitignore`
+> 只按「调用点」排除了 `screenshots/_edgeprofile_*/`，**漏了这个新出现的目录**，结果 463 个垃圾文件
+> 被一并提交，打包体积从 1.1 MB 膨胀到 2.4 MB。
+>
+> 处理方式：`git reset --mixed 27e2523` 退回干净基线 → 补齐 `.gitignore` 的目录级规则（`**/_tmp/`）
+> → 重新提交 → `git reflog expire --expire=now --all && git gc --prune=now` 清理悬空对象。
+> 最终仓库回到 **10 次提交、22 个跟踪文件、0 垃圾文件**。
+>
+> **教训：`.gitignore` 必须按「目录模式」写，而不是针对某一次调用产生的路径写**——否则新增一个
+> 脚本就会以新路径重新踩同一个坑。这类问题只有靠「提交前检查 `git status` 输出规模」才能拦住。
 
 ---
 
@@ -315,21 +327,35 @@ python -m http.server 8080
 - [x] 双击 `index.html` 可在浏览器中正常流畅运行
 - [x] 按 F12 检查 Console 控制台无红色报错
 - [x] 在 README.md 中完整填写了“人机协同三反思”
-- [x] 包含 3 次以上规范 Commit 记录（实际 6 次）
-- [ ] 已执行 `git push` 将代码推送到 GitHub 个人作品集
-- [ ] 已将仓库归档打包为 `Week05_Lab_学号姓名.zip`
+- [x] 包含 3 次以上规范 Commit 记录（实际 **10 次**）
+- [x] 已填写实验者姓名学号（**赵怡欣 / 7905126058**），且全部 Commit 作者已改写为本人
+- [ ] 已执行 `git push` 将代码推送到 GitHub 个人作品集 ← **待执行，见第八节**
+- [ ] 已将仓库归档打包为 `Week05_Lab_7905126058赵怡欣.zip` ← **待打包，见第八节第 ⑤ 步**
 
 ---
 
-## 八、推送与打包指引（提交前执行）
+## 八、提交前必须完成的 5 步（照做即可）
+
+> 详细图文版见同目录 `提交步骤清单.md`。
+
+| 步骤 | 要做什么 | 状态 / 命令 |
+| :-: | :--- | :--- |
+| ① | 填姓名学号 | ✅ **已完成**：`赵怡欣 / 7905126058`（README 第 4 行 + 全部 Commit 作者） |
+| ② | 装 Git for Windows | ⬜ https://git-scm.com/download/win （本机当前**未安装** Git） |
+| ③ | 建 GitHub 空仓库并 push | ⬜ 见 `提交步骤清单.md` 第 3 步的 5 条命令 |
+| ④ | 把仓库链接填回 README **第 7 行** | ⬜ `GitHub 作品集链接：`（推送后粘贴于此）`` |
+| ⑤ | 打包 zip（已含真实学号姓名） | ⬜ `python make_zip.py 7905126058赵怡欣` |
+
+---
+
+## 九、推送与打包命令备查
 
 ```bash
-# 1. 关联远端仓库（先在本机 GitHub 上新建空仓库）
+# 1. 关联远端仓库（先在 GitHub 上新建空仓库，三个初始化勾都不要勾）
 git remote add origin https://github.com/<你的用户名>/<仓库名>.git
 git branch -M main
 git push -u origin main
 
-# 2. 打包为规范命名的 Zip（排除 .git 中的临时对象）
-#    Windows PowerShell:
-#    Compress-Archive -Path .\* -DestinationPath ..\Week05_Lab_学号姓名.zip
+# 2. 打包为规范命名的 Zip（用脚本，会自动排除浏览器临时目录并带上 .git 历史）
+python make_zip.py 7905126058赵怡欣
 ```
