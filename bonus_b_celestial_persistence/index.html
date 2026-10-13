@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>进阶挑战 B · 天体场景单摆与本地持久化</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #1a1a24;
+      color: #e0e6ed;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; overflow: hidden; user-select: none;
+      transition: background 0.8s ease;
+    }
+
+    header { margin-bottom: 12px; text-align: center; }
+
+    h1 { font-size: 1.35rem; font-weight: 600; color: #f0f4f8; }
+
+    .subtitle {
+      display: inline-block; margin-top: 6px; font-size: 0.74rem;
+      padding: 3px 10px; border-radius: 10px;
+      background: rgba(129, 212, 250, 0.13); color: #81d4fa;
+      border: 1px solid rgba(129, 212, 250, 0.33);
+    }
+
+    canvas { display: block; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,.6); background: radial-gradient(circle at center, #222232 0%, #15151e 100%); }
+
+    /* ---------- 天体胶囊按钮 ---------- */
+    .scenes {
+      display: flex; gap: 10px; margin-top: 16px;
+      padding: 8px; border-radius: 999px;
+      background: rgba(30, 30, 42, 0.75);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,.1);
+      box-shadow: 0 4px 20px rgba(0,0,0,.35);
+    }
+
+    .scene-btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 20px; border: 1px solid transparent; border-radius: 999px;
+      background: transparent; color: #9aa5b8;
+      font-size: 0.83rem; font-weight: 600; cursor: pointer;
+      transition: all 0.3s ease; white-space: nowrap;
+    }
+
+    .scene-btn:hover { background: rgba(255,255,255,.06); color: #d6dee9; }
+
+    .scene-btn.active {
+      background: rgba(129, 212, 250, 0.16);
+      color: #ffffff;
+      border-color: rgba(129, 212, 250, 0.5);
+      box-shadow: 0 0 16px rgba(129, 212, 250, 0.3);
+    }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ---------- 滑块面板 ---------- */
+    .control-panel {
+      display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: center;
+      gap: 20px; padding: 13px 24px; margin-top: 12px;
+      background: rgba(30, 30, 42, 0.75);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,.1); border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.35); max-width: 860px; width: 100%;
+    }
+
+    .control-group { display: flex; flex-direction: column; gap: 5px; font-size: 0.8rem; }
+    .control-label { display: flex; justify-content: space-between; gap: 12px; color: #90caf9; font-weight: 500; }
+    .val-display { color: #fff; font-family: "SFMono-Regular", Consolas, monospace; font-weight: 600; }
+
+    input[type="range"] { -webkit-appearance: none; appearance: none; width: 140px; height: 6px; border-radius: 3px; background: #33334d; outline: none; }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 15px; height: 15px;
+      border-radius: 50%; background: #00e5ff; cursor: pointer; box-shadow: 0 0 8px #00e5ff;
+    }
+
+    .btn { border: none; padding: 9px 18px; font-size: 0.82rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all .2s ease; white-space: nowrap; }
+    .btn-reset { background: linear-gradient(135deg, #00b8d4 0%, #0091ea 100%); color: #fff; box-shadow: 0 2px 10px rgba(0,145,234,.4); }
+    .btn-reset:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,229,255,.55); }
+    .btn-clear { background: rgba(255,255,255,.07); color: #b0bec5; border: 1px solid rgba(255,255,255,.14); }
+    .btn-clear:hover { background: rgba(239,83,80,.16); color: #ef5350; border-color: rgba(239,83,80,.4); }
+
+    .hint { font-size: 0.76rem; color: #7c8598; margin-top: 10px; }
+    .hint b { color: #00e5ff; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>天体场景单摆模拟器</h1>
+    <span class="subtitle">4 天体重力场 · 平滑过渡 · localStorage 自动存盘</span>
+  </header>
+
+  <canvas id="canvas" width="800" height="470"></canvas>
+
+  <!-- ============ 天体胶囊按钮 ============ -->
+  <div class="scenes" id="scenes">
+    <button class="scene-btn active" data-scene="earth" type="button">
+      <span class="dot" style="background:#4fc3f7;box-shadow:0 0 8px #4fc3f7"></span>地球
+    </button>
+    <button class="scene-btn" data-scene="moon" type="button">
+      <span class="dot" style="background:#cfd8dc;box-shadow:0 0 8px #cfd8dc"></span>月球
+    </button>
+    <button class="scene-btn" data-scene="jupiter" type="button">
+      <span class="dot" style="background:#ffb74d;box-shadow:0 0 8px #ffb74d"></span>木星
+    </button>
+    <button class="scene-btn" data-scene="space" type="button">
+      <span class="dot" style="background:#ba68ff;box-shadow:0 0 8px #ba68ff"></span>太空
+    </button>
+  </div>
+
+  <div class="control-panel">
+    <div class="control-group">
+      <div class="control-label"><span>摆长 Length</span><span id="lenVal" class="val-display">200 px</span></div>
+      <input type="range" id="lenSlider" min="100" max="350" value="200" step="1">
+    </div>
+    <div class="control-group">
+      <div class="control-label"><span>重力 Gravity</span><span id="gravVal" class="val-display">9.8</span></div>
+      <input type="range" id="gravSlider" min="0" max="30" value="9.8" step="0.1">
+    </div>
+    <div class="control-group">
+      <div class="control-label"><span>空气阻尼 Damping</span><span id="dampVal" class="val-display">0.0000</span></div>
+      <input type="range" id="dampSlider" min="0.000" max="0.010" value="0.000" step="0.0005">
+    </div>
+    <button id="resetBtn" class="btn btn-reset" type="button">重置摆动</button>
+    <button id="clearBtn" class="btn btn-clear" type="button">清除本地缓存</button>
+  </div>
+
+  <div class="hint">点击天体按钮平滑切换重力场 · 刷新页面后参数<b>自动恢复</b>（localStorage 持久化）</div>
+
+  <script>
+    // ============================================================
+    //  天体场景单摆 —— 平滑重力过渡 + localStorage 持久化
+    //  纯原生 Canvas，零外部依赖
+    // ============================================================
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const STORAGE_KEY = 'week05_pendulum_config';
+
+    const origin = { x: canvas.width / 2, y: 70 };
+    const INITIAL_ANGLE = Math.PI / 4;   // 45°
+
+    // ============================================================
+    //  天体场景预设（重力 g，以及场景主题色）
+    // ============================================================
+    const SCENES = {
+      earth:   { label: '地球', g: 9.8,  color: '#00e5ff', glow: 'rgba(0,229,255,',   bodyBg: '#1a1a24' },
+      moon:    { label: '月球', g: 1.62, color: '#cfd8dc', glow: 'rgba(207,216,220,', bodyBg: '#1c1c22' },
+      jupiter: { label: '木星', g: 24.8, color: '#ffb74d', glow: 'rgba(255,183,77,',  bodyBg: '#241d16' },
+      space:   { label: '太空', g: 0.0,  color: '#ba68ff', glow: 'rgba(186,104,255,', bodyBg: '#12101c' }
+    };
+
+    // ---------- 状态 ----------
+    const P = {
+      length: 200,
+      gravity: 9.8,          // 当前显示用重力（会平滑趋近 targetGravity）
+      targetGravity: 9.8,    // 目标重力，用于平滑过渡
+      damping: 0.0,
+      scene: 'earth'
+    };
+
+    let angle = INITIAL_ANGLE;
+    let angularVelocity = 0.0;
+    let lastTime = performance.now();
+
+    // ============================================================
+    //  localStorage 持久化
+    // ============================================================
+    function saveConfig() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          length: P.length,
+          gravity: P.targetGravity,
+          damping: P.damping,
+          scene: P.scene
+        }));
+        return true;
+      } catch (e) {
+        console.warn('[persist] 写入 localStorage 失败：', e.message);
+        return false;
+      }
+    }
+
+    function loadConfig() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        const cfg = JSON.parse(raw);
+        // 字段校验：缺失或类型错误时回退到默认值
+        if (typeof cfg.length !== 'number' || typeof cfg.gravity !== 'number' ||
+            typeof cfg.damping !== 'number' || !SCENES[cfg.scene]) {
+          console.warn('[persist] 本地缓存字段非法，已回退默认配置');
+          return null;
+        }
+        return cfg;
+      } catch (e) {
+        console.warn('[persist] 读取 localStorage 失败：', e.message);
+        return null;
+      }
+    }
+
+    // ============================================================
+    //  控件引用
+    // ============================================================
+    const lenSlider = document.getElementById('lenSlider');
+    const gravSlider = document.getElementById('gravSlider');
+    const dampSlider = document.getElementById('dampSlider');
+    const lenVal = document.getElementById('lenVal');
+    const gravVal = document.getElementById('gravVal');
+    const dampVal = document.getElementById('dampVal');
+    const sceneBtns = document.querySelectorAll('.scene-btn');
+
+    // ---------- 把状态同步到 UI 控件 ----------
+    function syncUIToState() {
+      lenSlider.value = P.length;
+      gravSlider.value = P.targetGravity;
+      dampSlider.value = P.damping;
+      lenVal.textContent = P.length + ' px';
+      gravVal.textContent = P.targetGravity.toFixed(1);
+      dampVal.textContent = P.damping.toFixed(4);
+
+      sceneBtns.forEach((b) => b.classList.toggle('active', b.dataset.scene === P.scene));
+      applySceneTheme(P.scene);
+    }
+
+    function applySceneTheme(name) {
+      const s = SCENES[name];
+      document.body.style.background = s.bodyBg;
+      canvas.style.background =
+        'radial-gradient(circle at center, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.35) 100%), ' + s.bodyBg;
+    }
+
+    // ============================================================
+    //  场景切换：平滑过渡重力（不瞬变，避免画面跳跃）
+    // ============================================================
+    function switchScene(name) {
+      if (!SCENES[name]) return;
+      P.scene = name;
+      P.targetGravity = SCENES[name].g;
+
+      sceneBtns.forEach((b) => b.classList.toggle('active', b.dataset.scene === name));
+      gravSlider.value = P.targetGravity;
+      applySceneTheme(name);
+
+      saveConfig();
+    }
+
+    // ============================================================
+    //  物理积分：α = -(g / L) * sin(θ) - k * ω
+    // ============================================================
+    function updatePhysics(dt) {
+      // 重力平滑过渡：每秒最多变化 60% 的差距，产生视觉上的自然过渡
+      const diff = P.targetGravity - P.gravity;
+      if (Math.abs(diff) > 1e-4) {
+        P.gravity += diff * Math.min(1, dt * 2.2);
+        gravVal.textContent = P.gravity.toFixed(1);
+      } else {
+        P.gravity = P.targetGravity;
+      }
+
+      // 像素摆长换算为米，使重力加速度量纲生效
+      const lengthMeters = P.length / 100;
+
+      const angularAcceleration =
+        -(P.gravity / lengthMeters) * Math.sin(angle) -
+        P.damping * angularVelocity;
+
+      angularVelocity += angularAcceleration * dt;
+      angle += angularVelocity * dt;
+    }
+
+    // ============================================================
+    //  渲染
+    // ============================================================
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const theme = SCENES[P.scene];
+      const bobX = origin.x + P.length * Math.sin(angle);
+      const bobY = origin.y + P.length * Math.cos(angle);
+
+      // 太空场景：绘制星点背景
+      if (P.scene === 'space') {
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        for (let i = 0; i < 90; i++) {
+          // 用确定性伪随机，避免每帧闪烁
+          const px = ((i * 7919) % canvas.width);
+          const py = ((i * 104729) % canvas.height);
+          const r = (i % 3 === 0) ? 1.4 : 0.8;
+          ctx.globalAlpha = 0.25 + (i % 5) * 0.12;
+          ctx.beginPath();
+          ctx.arc(px, py, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // ---------- 摆线 ----------
+      ctx.beginPath();
+      ctx.moveTo(origin.x, origin.y);
+      ctx.lineTo(bobX, bobY);
+      ctx.strokeStyle = 'rgba(180, 200, 230, 0.45)';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 0;
+      ctx.stroke();
+
+      // ---------- 悬点 ----------
+      ctx.beginPath();
+      ctx.arc(origin.x, origin.y, 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#90caf9';
+      ctx.shadowColor = '#42a5f5';
+      ctx.shadowBlur = 10;
+      ctx.fill();
+
+      // ---------- 摆球光晕（颜色随天体主题变化） ----------
+      const halo = ctx.createRadialGradient(bobX, bobY, 4, bobX, bobY, 48);
+      halo.addColorStop(0, theme.glow + '0.42)');
+      halo.addColorStop(0.45, theme.glow + '0.12)');
+      halo.addColorStop(1, theme.glow + '0)');
+      ctx.beginPath();
+      ctx.arc(bobX, bobY, 48, 0, Math.PI * 2);
+      ctx.fillStyle = halo;
+      ctx.shadowBlur = 0;
+      ctx.fill();
+
+      // ---------- 摆球主体 ----------
+      ctx.beginPath();
+      ctx.arc(bobX, bobY, 18, 0, Math.PI * 2);
+      ctx.fillStyle = theme.color;
+      ctx.shadowColor = theme.color;
+      ctx.shadowBlur = 18;
+      ctx.fill();
+
+      // ---------- 高光 ----------
+      ctx.beginPath();
+      ctx.arc(bobX - 5, bobY - 5, 5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,.85)';
+      ctx.shadowBlur = 0;
+      ctx.fill();
+
+      // ---------- 当前场景读数 ----------
+      ctx.fillStyle = 'rgba(200, 210, 225, 0.6)';
+      ctx.font = '12px Consolas, monospace';
+      ctx.fillText('场景: ' + theme.label + '   目标 g = ' + P.targetGravity.toFixed(2) +
+                   '   实时 g = ' + P.gravity.toFixed(2), 16, 24);
+    }
+
+    // ============================================================
+    //  主循环
+    // ============================================================
+    function animate(currentTime) {
+      const dt = Math.min((currentTime - lastTime) / 1000, 0.05);
+      lastTime = currentTime;
+
+      updatePhysics(dt);
+      draw();
+
+      requestAnimationFrame(animate);
+    }
+
+    // ============================================================
+    //  事件绑定
+    // ============================================================
+    lenSlider.addEventListener('input', (e) => {
+      P.length = parseFloat(e.target.value);
+      lenVal.textContent = P.length + ' px';
+      saveConfig();
+    });
+
+    gravSlider.addEventListener('input', (e) => {
+      P.targetGravity = parseFloat(e.target.value);
+      gravVal.textContent = P.targetGravity.toFixed(1);
+      // 手动拖重力滑块时，脱离天体预设（标记为自定义）
+      saveConfig();
+    });
+
+    dampSlider.addEventListener('input', (e) => {
+      P.damping = parseFloat(e.target.value);
+      dampVal.textContent = P.damping.toFixed(4);
+      saveConfig();
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      angle = INITIAL_ANGLE;
+      angularVelocity = 0.0;
+      lastTime = performance.now();
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        console.log('[persist] 本地缓存已清除');
+      } catch (e) {
+        console.warn('[persist] 清除失败：', e.message);
+      }
+      P.length = 200;
+      P.damping = 0.0;
+      switchScene('earth');
+      syncUIToState();
+    });
+
+    sceneBtns.forEach((btn) => {
+      btn.addEventListener('click', () => switchScene(btn.dataset.scene));
+    });
+
+    // ============================================================
+    //  启动：优先读取本地缓存，实现刷新后参数恢复
+    // ============================================================
+    const saved = loadConfig();
+    if (saved) {
+      P.length = saved.length;
+      P.damping = saved.damping;
+      P.targetGravity = saved.gravity;
+      P.gravity = saved.gravity;   // 首次加载直接就位，不做过渡
+      P.scene = saved.scene;
+      console.log('[persist] 已从 localStorage 恢复上次参数：', saved);
+    } else {
+      console.log('[persist] 未找到本地缓存，使用默认参数（地球场景）');
+    }
+    syncUIToState();
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
