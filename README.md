@@ -4,13 +4,13 @@
 > 实验者：**赵怡欣**　学号：**7905126058**
 > 课程：《人机协同程序设计》　第 5 周实验　2 课时（80 分钟）
 > 实验形式：个人独立上机实验（HOTL 模式）
-> GitHub 作品集链接：`（推送后粘贴于此）`
+> GitHub 作品集链接：**<https://github.com/Xi-lio/upgraded-w->**
 
 ---
 
 ## 一、工作区状态：无菌工作区就绪 ✅
 
-本目录 `week05_pendulum_sim/` 是课程主仓库内为第 5 周创建的**独立无菌子模块**，隔离规范如下：
+本目录 `week05_pendulum_sim/` 是为第 5 周创建的**独立无菌工作区**（自带独立 Git 仓库，已推送到 GitHub），隔离规范如下：
 
 | 隔离项 | 规范 |
 | :--- | :--- |
@@ -42,7 +42,7 @@
 
 ---
 
-## 三、迭代轨迹（Git 里程碑，共 10 次 Commit，远超要求的 3 次）
+## 三、迭代轨迹（Git 里程碑，共 11 次 Commit，远超要求的 3 次）
 
 | # | Commit | Hash | 时间 | 对应任务 | 产物状态 |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -56,10 +56,14 @@
 | 8 | `chore: add packaging script for submission` | `27e2523` | 11:10 | 交付 | 一键打包脚本 |
 | 9 | `fix(task04): self-heal downloaded buggy page via ReAct loop` | `f8905bf` | 11:15 | 任务四 | 对演练页执行完整 ReAct 闭环修复 |
 | 10 | `docs: fill in student identity, finalize submission checklist and correct commit log` | — | 11:37 | 交付 | 填姓名学号 + 本表 + `提交步骤清单.md` + 全体提交署名 |
+| 11 | `docs: link GitHub portfolio repository` | — | 16:5x | 交付 | 回填作品集链接至 README 第 7 行，并把仓库推送到 GitHub |
+
+> 说明：第 10、11 次提交均以 `--amend` 之外的独立提交落地，因此**不写死自身哈希**（写了必然过期）。
+> 前 9 次的哈希可用 `git log --oneline` 直接对照。
 
 查看完整历史：`git log --oneline --stat`
 
-> **关于署名**：全部 10 次提交的作者均为 `赵怡欣 <7905126058@example.com>`。
+> **关于署名**：全部 11 次提交的作者均为 `赵怡欣 <7905126058@example.com>`。
 > 署名是通过「复用原有 tree、用 `git commit-tree` 重建提交链」的方式完成的（校验过新旧末端
 > tree 哈希完全一致，即**文件内容零改动**），没有使用 `git rebase` 改写工作区。
 > 最终 `git fsck --full` 输出为空，仓库结构健康。
@@ -327,35 +331,46 @@ python -m http.server 8080
 - [x] 双击 `index.html` 可在浏览器中正常流畅运行
 - [x] 按 F12 检查 Console 控制台无红色报错
 - [x] 在 README.md 中完整填写了“人机协同三反思”
-- [x] 包含 3 次以上规范 Commit 记录（实际 **10 次**）
+- [x] 包含 3 次以上规范 Commit 记录（实际 **11 次**）
 - [x] 已填写实验者姓名学号（**赵怡欣 / 7905126058**），且全部 Commit 作者已改写为本人
-- [ ] 已执行 `git push` 将代码推送到 GitHub 个人作品集 ← **待执行，见第八节**
-- [ ] 已将仓库归档打包为 `Week05_Lab_7905126058赵怡欣.zip` ← **待打包，见第八节第 ⑤ 步**
+- [x] 已执行 `git push` 将代码推送到 GitHub 个人作品集 → <https://github.com/Xi-lio/upgraded-w->
+- [x] 已将仓库归档打包为 `Week05_Lab_7905126058赵怡欣.zip`
 
 ---
 
-## 八、提交前必须完成的 5 步（照做即可）
+## 八、提交状态总览
 
-> 详细图文版见同目录 `提交步骤清单.md`。
-
-| 步骤 | 要做什么 | 状态 / 命令 |
+| 步骤 | 要做什么 | 状态 |
 | :-: | :--- | :--- |
-| ① | 填姓名学号 | ✅ **已完成**：`赵怡欣 / 7905126058`（README 第 4 行 + 全部 Commit 作者） |
-| ② | 装 Git for Windows | ⬜ https://git-scm.com/download/win （本机当前**未安装** Git） |
-| ③ | 建 GitHub 空仓库并 push | ⬜ 见 `提交步骤清单.md` 第 3 步的 5 条命令 |
-| ④ | 把仓库链接填回 README **第 7 行** | ⬜ `GitHub 作品集链接：`（推送后粘贴于此）`` |
-| ⑤ | 打包 zip（已含真实学号姓名） | ⬜ `python make_zip.py 7905126058赵怡欣` |
+| ① | 填姓名学号 | ✅ 已完成：`赵怡欣 / 7905126058`（README 第 4 行 + 全部 Commit 作者） |
+| ② | 装 Git for Windows | ✅ 已完成：`git version 2.56.0.windows.2`（`C:\Program Files\Git`） |
+| ③ | 建 GitHub 空仓库并 push | ✅ 已完成：<https://github.com/Xi-lio/upgraded-w->（`main` 已跟踪 `origin/main`） |
+| ④ | 把仓库链接填回 README 第 7 行 | ✅ 已完成 |
+| ⑤ | 打包 zip | ✅ 已完成：`Week05_Lab_7905126058赵怡欣.zip` |
 
 ---
 
-## 九、推送与打包命令备查
+## 九、复现 / 教师核验命令
 
 ```bash
-# 1. 关联远端仓库（先在 GitHub 上新建空仓库，三个初始化勾都不要勾）
-git remote add origin https://github.com/<你的用户名>/<仓库名>.git
-git branch -M main
-git push -u origin main
+# 1) 克隆作品集仓库
+git clone https://github.com/Xi-lio/upgraded-w-.git
+cd upgraded-w-
 
-# 2. 打包为规范命名的 Zip（用脚本，会自动排除浏览器临时目录并带上 .git 历史）
-python make_zip.py 7905126058赵怡欣
+# 2) 核验提交历史与署名（应列出 11 条，作者为 赵怡欣）
+git log --oneline
+git log --pretty="%an <%ae> | %s"
+
+# 3) 核验仓库结构健康
+git fsck --full      # 应无输出
+git status           # 应为 clean
+git ls-files         # 22 个跟踪文件
+```
+
+```bash
+# 4) 若从 zip 交付包核验：解压后直接当仓库用
+#    包内已含完整 .git 历史，无需联网
+cd Week05_Lab_7905126058赵怡欣
+git log --oneline
+git fsck --full
 ```
